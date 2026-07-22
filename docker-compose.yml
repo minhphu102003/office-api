@@ -1,0 +1,17 @@
+services:
+  office-api:
+    build:
+      context: .
+      args:
+        OFFICECLI_VERSION: v1.0.140
+        OFFICECLI_FILE: officecli-linux-x64
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-your-key}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o}
+      - OFFICECLI_PATH=bin/officecli
+      - OUTPUT_DIR=output
+    volumes:
+      - ./output:/app/output

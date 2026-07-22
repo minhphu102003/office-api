@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+app/__init__.py
+app/config.py
+app/main.py
+app/models/__init__.py
+app/models/schemas.py
+app/routers/__init__.py
+app/routers/documents.py
+app/services/__init__.py
+app/services/llm_service.py
+app/services/office_service.py
+office_api.egg-info/PKG-INFO
+office_api.egg-info/SOURCES.txt
+office_api.egg-info/dependency_links.txt
+office_api.egg-info/requires.txt
+office_api.egg-info/top_level.txt
