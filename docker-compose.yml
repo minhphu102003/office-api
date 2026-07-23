@@ -13,5 +13,7 @@ services:
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
       - OFFICECLI_PATH=bin/officecli
       - OUTPUT_DIR=output
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
     volumes:
       - ./output:/app/output
+      - ./office_mcp:/app/office_mcp
