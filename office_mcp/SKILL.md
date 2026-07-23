@@ -20,24 +20,41 @@ Call these tools when the user wants to **create a document from a template**:
 
 This MCP provides tools around a `templates/` folder. Each template is a regular `.docx`, `.xlsx`, or `.pptx` file with `{{placeholder}}` markers. The merge command replaces those markers with values from a JSON object.
 
-## Workflow
+Drafts are stored in SQLite (`output/drafts.db`) so work can be resumed across sessions.
+
+## Workflow: stateful (recommended for partial data)
 
 ```
-1. list_templates()         → see what templates exist
-2. view_template(name)      → inspect placeholders in a template
-3. (you figure out the data based on user request)
-4. create_doc(name, data, output)  → merge & generate
+1. list_templates()               → see what templates exist
+2. view_template(name)            → inspect placeholders
+3. create_draft(template)         → start a draft → get draft_id
+4. update_draft(draft_id, data)   → fill data gradually (call multiple times)
+5. generate_from_draft(id, file)  → produce final document
+6. download_doc(file)             → retrieve file as base64 → save to user's machine
+```
+
+Use `list_drafts()` to find in-progress drafts, `get_draft(id)` to check what's been filled.
+
+## Workflow: stateless (simple, all data at once)
+
+```
+1. list_templates()               → see what templates exist
+2. view_template(name)            → inspect placeholders
+3. create_doc(name, data, file)   → merge & generate
+4. download_doc(file)             → retrieve file as base64
 ```
 
 ## Example
 
-User: *"Create an invoice for Acme Corp, total $5,200"*
+User: *"Create an invoice for Acme Corp"* (partial data — use draft)
 
 1. `list_templates()` → sees `invoice_template.docx`
-2. `view_template("invoice_template")` → finds placeholders: `{{client_name}}`, `{{total}}`, `{{date}}`
-3. Determines data: `{"client_name": "Acme Corp", "total": "$5,200", "date": "2026-07-22"}`
-4. `create_doc("invoice_template", {...}, "invoice_acme.docx")`
-5. Returns: *"Created invoice_acme.docx for Acme Corp, $5,200"*
+2. `view_template("invoice_template")` → finds placeholders: `{{client_name}}`, `{{total}}`, `{{date}}`, `{{item}}`
+3. `create_draft("invoice_template", {"client_name": "Acme Corp"})` → draft_id "abc123"
+4. User adds total: `update_draft("abc123", {"total": "$5,200"})`
+5. User adds date: `update_draft("abc123", {"date": "2026-07-22"})`
+6. `generate_from_draft("abc123", "invoice_acme.docx")` → file created
+7. `download_doc("invoice_acme.docx")` → get base64 → save locally
 
 ## Tools
 
@@ -48,10 +65,18 @@ User: *"Create an invoice for Acme Corp, total $5,200"*
 | `create_doc` | Merge JSON data into a template, produce output file |
 | `upload_template` | Upload a new template (base64) |
 | `get_doc_info` | Read stats and outline of a generated file |
+| `download_doc` | Get generated file as base64 for local saving |
+| `create_draft` | Start a new draft, get draft_id |
+| `update_draft` | Merge data into an existing draft |
+| `get_draft` | View current state of a draft |
+| `list_drafts` | List all drafts, filter by status |
+| `delete_draft` | Remove a draft |
+| `generate_from_draft` | Finalize a draft into a document |
 
 ## Notes
 
 - Templates live in `templates/` and generated files go to `output/`
+- Drafts persist in `output/drafts.db` (SQLite) across restarts
 - Supported formats: `.docx`, `.xlsx`, `.pptx`
 - The `--json` flag is always used for structured output
-- If the user provides incomplete data, ask clarifying questions before calling `create_doc`
+- If the user provides incomplete data, prefer `create_draft` + `update_draft` over `create_doc`
