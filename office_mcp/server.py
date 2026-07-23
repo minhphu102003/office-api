@@ -1,5 +1,7 @@
 from pathlib import Path
+from pydantic import AnyUrl
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.resources import TextResource
 from office_mcp.tools.templates import list_templates, upload_template
 from office_mcp.tools.documents import create_doc, view_template
 from office_mcp.tools.info import get_doc_info
@@ -33,12 +35,12 @@ mcp.add_tool(get_doc_info)
 SKILL_PATH = Path(__file__).parent / "SKILL.md"
 if SKILL_PATH.exists():
     skill_content = SKILL_PATH.read_text()
-    mcp.add_resource(
-        "skill://guide",
+    mcp.add_resource(TextResource(
+        uri=AnyUrl("skill://guide"),
         name="MCP Server Guide",
         description="Full usage guide for office-mcp server, including workflows and examples",
         mime_type="text/markdown",
-        content=skill_content,
-    )
+        text=skill_content,
+    ))
 
 app = mcp.sse_app()
