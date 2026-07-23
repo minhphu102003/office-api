@@ -2,6 +2,7 @@ from pathlib import Path
 from pydantic import AnyUrl
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.resources import TextResource
+from office_mcp.core.skill_loader import load_skills, SKILLS_DIR
 from office_mcp.tools.templates import list_templates, upload_template
 from office_mcp.tools.documents import create_doc, view_template
 from office_mcp.tools.drafts import create_draft, update_draft, get_draft, list_drafts, delete_draft, generate_from_draft
@@ -34,6 +35,14 @@ Use `list_drafts()` to see in-progress drafts, `get_draft(draft_id)` to check ac
 - User provides partial data — use `create_draft` + `update_draft` to collect it gradually
 - User wants a formatted document with all data ready — use `create_doc` directly
 
+## Formatting Standards
+Before creating documents, read the relevant formatting guide:
+- `skill://format/word-format` — Word (.docx) font, spacing, margins, heading hierarchy
+- `skill://format/excel-format` — Excel (.xlsx) tables, alignment, number formats, colors
+- `skill://format/powerpoint-format` — PowerPoint (.pptx) layouts, typography, slide rules
+
+Apply these standards when creating templates or filling placeholders.
+
 ## When NOT to use
 - User wants a fully custom document from scratch — use the REST API endpoints instead
 """
@@ -53,6 +62,7 @@ mcp.add_tool(list_drafts)
 mcp.add_tool(delete_draft)
 mcp.add_tool(generate_from_draft)
 
+# ── Main server skill ──
 SKILL_PATH = Path(__file__).parent / "SKILL.md"
 if SKILL_PATH.exists():
     skill_content = SKILL_PATH.read_text()
@@ -62,6 +72,16 @@ if SKILL_PATH.exists():
         description="Full usage guide for office-mcp server, including workflows and examples",
         mime_type="text/markdown",
         text=skill_content,
+    ))
+
+# ── Formatting skills (loaded from skills/<name>/SKILL.md) ──
+for skill in load_skills():
+    mcp.add_resource(TextResource(
+        uri=AnyUrl(f"skill://format/{skill['name']}"),
+        name=f"{skill['name']} Formatting Standards",
+        description=skill["description"],
+        mime_type="text/markdown",
+        text=skill["text"],
     ))
 
 app = mcp.sse_app()
