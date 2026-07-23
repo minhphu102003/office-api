@@ -5,3 +5,4 @@ __pycache__/
 output/
 bin/officecli.exe
 *.egg-info/
+office_api.egg-info/
