@@ -20,6 +20,13 @@ async def lifespan(app: FastAPI):
         print(f"WARNING: OfficeCLI binary not found at {binary.resolve()}", file=sys.stderr)
     output_dir = Path(settings.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    if HAS_MCP:
+        from office_mcp.server import mcp
+        sm = mcp.session_manager
+        if sm is not None:
+            async with sm.run():
+                yield
+            return
     yield
 
 

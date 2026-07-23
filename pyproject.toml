@@ -20,3 +20,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["app", "app.*", "office_mcp", "office_mcp.*"]
+
+[project.scripts]
+office-mcp = "office_mcp.server:run_stdio"

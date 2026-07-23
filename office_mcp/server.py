@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from pydantic import AnyUrl
 from mcp.server.fastmcp import FastMCP
@@ -36,7 +37,7 @@ Use `list_drafts()` to see in-progress drafts, `get_draft(draft_id)` to check ac
 - User wants a formatted document with all data ready — use `create_doc` directly
 
 ## Formatting Standards
-Before creating documents, read the relevant formatting guide:
+Before creating documents, use `read_mcp_resource` with the URI to read the formatting guide. These are static resources — you can read them directly by URI without listing first.
 - `skill://format/word-format` — Word (.docx) font, spacing, margins, heading hierarchy
 - `skill://format/excel-format` — Excel (.xlsx) tables, alignment, number formats, colors
 - `skill://format/powerpoint-format` — PowerPoint (.pptx) layouts, typography, slide rules
@@ -84,4 +85,88 @@ for skill in load_skills():
         text=skill["text"],
     ))
 
-app = mcp.sse_app()
+# ── Debug: instructions sent? ──
+_INSTRUCTIONS_SENT: bool = False
+
+_original_send: object = None
+
+
+def _wrap_asgi_send(scope, receive, send):
+    """Wrap the ASGI send call to detect InitializeResult in responses."""
+
+    _body_buffer: list[bytes] = []
+
+    async def _logged_send(message):
+        global _INSTRUCTIONS_SENT
+        if message.get("type") == "http.response.body":
+            body = message.get("body", b"")
+            if body:
+                _body_buffer.append(body)
+            if not message.get("more_body", False):
+                import json
+                full = b"".join(_body_buffer).decode()
+                _body_buffer.clear()
+                # SSE format: event: message\ndata: {...}\n\n
+                # Extract JSON from each "data:" line
+                for line in full.split("\n"):
+                    line = line.strip()
+                    if line.startswith("data: ") or line.startswith("data:"):
+                        json_text = line[5:].strip()
+                        if json_text:
+                            try:
+                                data = json.loads(json_text)
+                                if isinstance(data, dict) and "result" in data:
+                                    inst = data["result"].get("instructions")
+                                    if inst is not None:
+                                        _INSTRUCTIONS_SENT = True
+                                        print(
+                                            f"[MCP-DEBUG] ✅ InitializeResult SENT with instructions"
+                                            f" (len={len(inst)}, preview={inst[:80]!r})",
+                                            file=sys.stderr,
+                                        )
+                                        break
+                                    else:
+                                        keys = list(data["result"].keys())
+                                        if "protocolVersion" in keys:
+                                            print(f"[MCP-DEBUG] ⚠️ InitializeResult WITHOUT instructions! keys={keys}", file=sys.stderr)
+                                            break
+                            except json.JSONDecodeError:
+                                pass
+        await send(message)
+
+    return _logged_send
+
+
+async def _debug_asgi_app(scope, receive, send):
+    if scope["type"] == "http":
+        wrapped_send = _wrap_asgi_send(scope, receive, send)
+        await _inner_app(scope, receive, wrapped_send)
+    else:
+        await _inner_app(scope, receive, send)
+
+
+# ── Streamable HTTP (cho Grok, opencode,...) ──
+mcp.settings.streamable_http_path = "/"
+print(
+    f"[MCP-DEBUG] FastMCP instructions field: {mcp._mcp_server.instructions is not None}"
+    f" (len={len(mcp._mcp_server.instructions or '')})",
+    file=sys.stderr,
+)
+_inner_app = mcp.streamable_http_app()
+app = _debug_asgi_app
+
+
+# ── Stdio (cho CLI: uv run office-mcp) ──
+def run_stdio():
+    """Run as stdio MCP server (local subprocess)."""
+    import sys
+    print("[MCP-DEBUG] Starting stdio transport...", file=sys.stderr)
+    mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    run_stdio()
+
+
+if __name__ == "__main__":
+    run_stdio()
