@@ -1,10 +1,11 @@
 import json
+import os
 from pathlib import Path
 from typing import Any
 from office_mcp.core.client import run_officecli
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
-OUTPUT_DIR = Path(__file__).parent.parent / "output"
+OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", str(Path(__file__).parent.parent / "output")))
 
 
 def _resolve_template(template: str) -> Path | None:
@@ -19,7 +20,7 @@ def _resolve_template(template: str) -> Path | None:
 
 
 def create_doc(template: str, data: dict[str, Any], output_filename: str) -> dict[str, Any]:
-    """Generate a document by merging JSON data into a template. Replaces all {{placeholder}} markers in the template with the provided data values. Call view_template first to see what placeholders are available.
+    """Generate a document by merging JSON data into a template. Replaces all {{placeholder}} markers in the template with the provided data values. Call view_template first to see what placeholders are available. The file is saved on the server — use download_doc to retrieve the content.
 
     Args:
         template: Template name or filename (e.g. 'invoice_template.docx' or just 'invoice_template')
@@ -35,6 +36,8 @@ def create_doc(template: str, data: dict[str, Any], output_filename: str) -> dic
     return {
         "success": result.get("success", True),
         "path": str(output_path),
+        "filename": output_filename,
+        "format": output_path.suffix[1:],
         "template": template,
     }
 
