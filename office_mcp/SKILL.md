@@ -20,7 +20,42 @@ Call these tools when the user wants to **create a document from a template**:
 
 This MCP provides tools around a `templates/` folder. Each template is a regular `.docx`, `.xlsx`, or `.pptx` file with `{{placeholder}}` markers. The merge command replaces those markers with values from a JSON object.
 
+This MCP provides **2 ways** to create templates:
+
+1. **`create_template`** — from an existing Office file (preserves original formatting)
+2. **`markdown_to_template`** — from markdown text (generates fresh .docx with proper formatting)
+
+Neither tool uses AI. The agent is responsible for analysis, reasoning, and user interaction.
+
 Drafts are stored in SQLite (`output/drafts.db`) so work can be resumed across sessions.
+
+## Workflow A: Create template from existing file (preserve formatting)
+
+```
+1. User provides a document (docx/xlsx/pptx)
+2. Agent reads the file locally → extracts text for analysis
+3. Agent identifies dynamic content → creates markdown preview showing proposed {{placeholders}}
+4. User approves the markdown
+5. Agent calls create_template(
+       source="C:/path/to/original.docx",
+       output_filename="contract_template.docx",
+       replacements={"Acme Corp": "{{company_name}}", "John Doe": "{{client_name}}"}
+   )
+   → MCP: copies file → officecli batch find/replace → preserves all formatting
+6. list_templates() → sees the new template
+7. create_doc / create_draft → use the template as normal
+```
+
+## Workflow B: Create template from markdown (new document)
+
+```
+1. Agent/User composes markdown with headings, lists, bold, {{placeholders}}...
+2. Agent calls markdown_to_template(markdown="...", output_filename="report_template.docx")
+   → MCP: python-docx → creates formatted .docx (TNR 12pt, 1.5 spacing, justified, etc.)
+3. list_templates() → sees the new template
+4. view_template("report_template") → inspect placeholders
+5. create_doc / create_draft → use as normal
+```
 
 ## Workflow: stateful (recommended for partial data)
 
@@ -64,6 +99,8 @@ User: *"Create an invoice for Acme Corp"* (partial data — use draft)
 | `view_template` | Show text content and placeholders in a template |
 | `create_doc` | Merge JSON data into a template, produce output file |
 | `upload_template` | Upload a new template (base64) |
+| `create_template` | Create template from existing file: copy + find/replace placeholders (preserves original formatting) |
+| `markdown_to_template` | Convert markdown text to a formatted .docx template (TNR, 1.5 spacing, word-format standards) |
 | `get_doc_info` | Read stats and outline of a generated file |
 | `download_doc` | Get generated file as base64 for local saving |
 | `create_draft` | Start a new draft, get draft_id |
