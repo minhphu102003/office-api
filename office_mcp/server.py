@@ -4,7 +4,7 @@ from pydantic import AnyUrl
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.resources import TextResource
 from office_mcp.core.skill_loader import load_skills, SKILLS_DIR
-from office_mcp.tools.templates import create_template, list_templates, upload_template
+from office_mcp.tools.templates import create_template, list_templates, upload_template, delete_template
 
 from office_mcp.tools.documents import create_doc, view_template
 from office_mcp.tools.drafts import create_draft, update_draft, get_draft, list_drafts, delete_draft, generate_from_draft
@@ -19,6 +19,7 @@ mcp = FastMCP("office-mcp", instructions=INSTRUCTIONS)
 mcp.add_tool(list_templates)
 mcp.add_tool(upload_template)
 mcp.add_tool(create_template)
+mcp.add_tool(delete_template)
 mcp.add_tool(create_doc)
 mcp.add_tool(view_template)
 mcp.add_tool(get_doc_info)

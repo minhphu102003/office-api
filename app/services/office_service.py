@@ -134,7 +134,7 @@ class OfficeService:
 
     def batch(self, filepath: str, commands: list[dict], stop_on_error: bool = False) -> dict:
         cmds_json = json.dumps(commands)
-        cmd = ["batch", filepath, cmds_json]
+        cmd = ["batch", filepath, "--commands", cmds_json]
         if stop_on_error:
             cmd.append("--stop-on-error")
         return self._run(*cmd, timeout=120)
@@ -147,7 +147,7 @@ class OfficeService:
 
     def merge(self, filepath: str, output_path: str, data: dict) -> dict:
         data_json = json.dumps(data)
-        return self._run("merge", filepath, output_path, data_json)
+        return self._run("merge", filepath, output_path, "--data", data_json)
 
     def open(self, filepath: str) -> dict:
         return self._run("open", filepath)

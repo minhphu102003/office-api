@@ -55,13 +55,13 @@ def create_template(
 
         if replacements:
             commands = [
-                {"command": "set", "path": "/", "find": find_text, "replace": replace_text}
+                {"command": "set", "path": "/", "props": {"find": find_text, "replace": replace_text}}
                 for find_text, replace_text in replacements.items()
                 if find_text and replace_text
             ]
             if commands:
                 cmds_json = json.dumps(commands)
-                batch_result = run_officecli("batch", str(temp_path), cmds_json, timeout=120)
+                batch_result = run_officecli("batch", str(temp_path), "--commands", cmds_json, timeout=120)
                 if isinstance(batch_result, dict) and batch_result.get("error"):
                     return {"success": False, "error": f"Failed to apply replacements: {batch_result['error']}"}
 
@@ -101,6 +101,34 @@ def list_templates() -> list[dict[str, Any]]:
                 "info": info.get("data", {}),
             })
     return templates
+
+
+def delete_template(filename: str) -> dict[str, Any]:
+    """Delete a template file from the templates directory.
+
+    Args:
+        filename: Template filename (e.g. 'invoice_template.docx') or name without extension
+    """
+    filepath = TEMPLATES_DIR / filename
+    if not filepath.exists():
+        for ext in (".docx", ".xlsx", ".pptx"):
+            p = TEMPLATES_DIR / f"{filename}{ext}"
+            if p.exists():
+                filepath = p
+                break
+        else:
+            return {"success": False, "error": f"Template '{filename}' not found"}
+
+    try:
+        size = filepath.stat().st_size
+        filepath.unlink()
+        return {
+            "success": True,
+            "filename": filepath.name,
+            "size": size,
+        }
+    except Exception as e:
+        return {"success": False, "error": f"Failed to delete template: {e}"}
 
 
 def upload_template(filename: str, content: str) -> dict[str, Any]:
