@@ -11,6 +11,8 @@ from office_mcp.tools.drafts import create_draft, update_draft, get_draft, list_
 from office_mcp.tools.info import get_doc_info, download_doc
 from office_mcp.tools.markdown import markdown_to_template
 from office_mcp.tools.tables import fill_table_rows
+from office_mcp.tools.form import generate_from_form
+from office_mcp.resources.template_form import generate_template_form as gen_form
 
 INSTRUCTIONS_PATH = Path(__file__).parent / "INSTRUCTIONS.md"
 INSTRUCTIONS = INSTRUCTIONS_PATH.read_text()
@@ -33,6 +35,18 @@ mcp.add_tool(delete_draft)
 mcp.add_tool(generate_from_draft)
 mcp.add_tool(markdown_to_template)
 mcp.add_tool(fill_table_rows)
+mcp.add_tool(generate_from_form)
+
+# ── Dynamic template form resource ──
+@mcp.resource(
+    "template://{name}/form",
+    name="Template Data Entry Form",
+    description="Generate a markdown data-entry form for any template, listing all placeholders",
+    mime_type="text/markdown",
+)
+def template_form_resource(name: str) -> str:
+    return gen_form(name)
+
 
 # ── Main server skill ──
 SKILL_PATH = Path(__file__).parent / "SKILL.md"

@@ -2,88 +2,178 @@
 
 Generate documents (.docx, .xlsx, .pptx) from pre-existing templates by merging JSON data into {{placeholder}} markers.
 
-## Stateful Workflow (recommended)
-Use drafts to accumulate data incrementally — the workflow is resumable if interrupted:
+## Tools Overview
 
-1. `list_templates` → see available templates
-2. `view_template` → inspect placeholders
-3. `create_draft(template)` → start a draft, get a draft_id
-4. `update_draft(draft_id, data)` → fill in placeholders gradually (call multiple times)
-5. `generate_from_draft(draft_id, output_filename)` → produce the final doc
-6. `download_doc(output_filename)` → retrieve the file as base64, save to user's machine
+| Tool | Purpose |
+|------|---------|
+| `list_templates` | List available templates |
+| `upload_template` | Upload a file as template (base64) |
+| `create_template` | Convert a raw file into template (find/replace → placeholder) |
+| `delete_template` | Delete a template |
+| `view_template` | Inspect template structure & placeholders |
+| `create_doc` | Merge data into template → generate docx |
+| `fill_table_rows` | Clone table rows N times and fill placeholders |
+| `generate_from_form` | Parse filled markdown form → auto run create_doc + fill_table_rows |
+| `download_doc` | Download generated file as base64 |
+| `create_draft` / `update_draft` / `get_draft` / `list_drafts` / `delete_draft` / `generate_from_draft` | Incremental multi-step workflow |
+| `markdown_to_template` | Convert markdown → .docx template |
+| `get_doc_info` | Get stats/outline of a generated document |
 
-Use `list_drafts()` to see in-progress drafts, `get_draft(draft_id)` to check accumulated data.
+## Resources
 
-## Stateless Workflow (simple)
-1. `list_templates` → see available templates
-2. `view_template` → inspect placeholders
-3. `create_doc` → merge data into template and produce output
-4. `download_doc` → retrieve the file
+| URI | Description |
+|-----|-------------|
+| `skill://guide` | Full usage guide (this file) |
+| `skill://format/word-format` | Word formatting standards (font, spacing, margins) |
+| `template://{name}/form` | Generate a markdown data-entry form from any template's placeholders |
 
-## When to use
+## When to Use
+
 - User asks to create invoices, contracts, reports, letters from a template
 - User provides partial data — use `create_draft` + `update_draft` to collect it gradually
 - User wants a formatted document with all data ready — use `create_doc` directly
 
-## Formatting Standards
-Before creating documents, use `read_mcp_resource` with the URI to read the formatting guide. These are static resources — you can read them directly by URI without listing first.
-- `skill://format/word-format` — Word (.docx) font, spacing, margins, heading hierarchy
-- `skill://format/excel-format` — Excel (.xlsx) tables, alignment, number formats, colors
-- `skill://format/powerpoint-format` — PowerPoint (.pptx) layouts, typography, slide rules
+---
 
-Apply these standards when creating templates or filling placeholders.
+## Workflow A: Simple (no dynamic tables)
 
-## Templates with Dynamic Tables (create_template + fill_table_rows)
-Use this flow when a document has both static placeholders AND a table with dynamic rows.
+1. `list_templates` → see available templates
+2. `view_template` → inspect placeholders
+3. `create_doc(template, data, output_filename)` → merge data into template
+4. `download_doc(output_filename)` → retrieve file
 
-### Template Design
-Create the template with `create_template`:
-- Place all non-table text as `{{placeholder}}` (e.g. `{{week_range}}`, `{{reporter_name}}`)
-- In the table: keep only **1 header row** + **1 data row** with `{{placeholder}}` markers
-- The data row will be cloned N times by `fill_table_rows`
+---
 
-Common table placeholders:
-- `{{project_name}}` — project/task name
-- `{{progress_percent}}` — completion percentage  
-- `{{task_bullets}}` — multi-line bullet list (use `\n` between lines)
+## Workflow B: Template from user's Word file + dynamic tables
 
-### Full Workflow (step by step)
-1. **Upload + create template**
-   - Agent reads the user's Word file, proposes placeholders for approval
-   - `delete_template(old_name)` if replacing an existing template
-   - `upload_template(filename, base64_content)` to upload the user's formatted file
-   - `create_template(source="filename.docx", output_filename="template.docx", replacements={...})`
-   
-2. **Generate initial doc** with `create_doc`
-   - Fill ONLY the non-table placeholders (leave `{{project_name}}`, `{{task_bullets}}` etc. as-is)
-   - `create_doc(template="template.docx", data={"week_range": "13/7 – 19/7/2026", "department_name": "..."}, output_filename="output.docx")`
+Use when the user uploads a .docx that needs `{{placeholder}}` markers added.
 
-3. **Fill table rows** with `fill_table_rows`
-   - The output from step 2 still has `{{...}}` markers in the table row
-   - `fill_table_rows(filepath="output.docx", table_index=0, rows=[{...}, {...}])`
-
-4. **Download**
-   - `download_doc(filepath="output.docx")` → base64 → save to user
-
-### Example
-```
-# Step 2
-create_doc(template="ke_hoach_cong_tac", data={
-    "week_range": "13/7/2026 – 19/7/2026",
-    "department_name": "Phòng Đào Tạo",
-}, output_filename="baocao_tuan.docx")
-
-# Step 3
-fill_table_rows(filepath="baocao_tuan.docx", table_index=0, rows=[
-    {"project_name": "Chatbot Tuyển Sinh", "progress_percent": "90", "task_bullets": "- Viết document\n- Kiểm thử dashboard"},
-    {"project_name": "Website Tuyển Sinh", "progress_percent": "50", "task_bullets": "- Phân tích yêu cầu\n- Thiết kế UI"},
-])
+### Step 1 — Create template
+```python
+# Preview placeholders to user first (agent reads doc, proposes replacements)
+create_template(
+    source="C:/Users/.../my_document.docx",
+    output_filename="my_template.docx",
+    replacements={
+        "Acme Corp": "{{company_name}}",
+        "John Doe": "{{full_name}}",
+    }
+)
 ```
 
-### Important Notes
-- `create_doc` merge leaves unknown `{{...}}` untouched — safe to skip table placeholders
-- `fill_table_rows` works on files in either templates/ or output/ directory
-- Multi-line values use `\n` (literal newline) — auto-converted to Word line breaks
+### Step 2 — Generate initial document (fills non-table fields)
+```python
+create_doc(
+    template="my_template",
+    data={
+        "week_range": "13/7/2026 – 19/7/2026",
+        "full_name": "Nguyen Van A",
+    },
+    output_filename="output.docx"
+)
+```
+→ Table `{{...}}` placeholders remain untouched.
+
+### Step 3 — Fill dynamic table rows
+```python
+fill_table_rows(
+    filepath="output.docx",
+    table_index=0,
+    rows=[
+        {"project_name": "Chatbot", "progress_percent": "90",
+         "task_bullets": "- Viet document\n- Kiem thu"},
+        {"project_name": "Website", "progress_percent": "50",
+         "task_bullets": "- Phan tich yeu cau\n- Thiet ke UI"},
+    ]
+)
+```
+
+### Step 4 — Download
+```python
+download_doc(filepath="output.docx")
+```
+
+---
+
+## Workflow C: Markdown Form Round-Trip (recommended for complex docs)
+
+Best for documents with many placeholders + multiple dynamic tables. Uses the `template://{name}/form` resource and `generate_from_form` tool.
+
+### Step 1 — Agent reads the data-entry form
+```python
+# Read the form resource
+read_mcp_resource("template://ke_hoach_cong_tac_template/form")
+# Returns markdown with all placeholders listed in tables
+```
+
+### Step 2 — Agent writes the form to a local .md file
+```python
+# Agent uses write() to save the markdown to a file
+write("fill_data.md", form_content)
+```
+
+### Step 3 — User fills the markdown form
+```
+## General Fields
+| Placeholder | Value |
+|-------------|-------|
+| `{{last_week}}` | 26/2026 |
+| `{{full_name:uppercase}}` | LE VAN A |
+
+## Dynamic Tables
+### Table 2
+| `{{project_name}}` | `{{progress_percent}}` | `{{task_bullets}}` |
+|---|---|---|
+| Chatbot | 90 | - Task 1\n- Task 2 |
+| Website | 50 | - Task A |
+```
+
+### Step 4 — Agent generates the document
+```python
+generate_from_form(
+    template="ke_hoach_cong_tac_template",
+    form_content=filled_markdown_content,
+    output_filename="final_report.docx"
+)
+```
+→ Automatically calls `create_doc` (general fields) + `fill_table_rows` (each dynamic table).
+
+### Step 5 — Download
+```python
+download_doc(filepath="final_report.docx")
+```
+
+---
+
+## Stateful Workflow (resumable drafts)
+Use when data comes incrementally:
+1. `create_draft(template)` → get `draft_id`
+2. `update_draft(draft_id, data={"key": "val"})` — call multiple times
+3. `generate_from_draft(draft_id, output_filename)` → final doc
+4. `download_doc(output_filename)` → retrieve
+
+---
+
+## Table Design Rules (for fill_table_rows)
+- **Row 0**: header row (static text, no placeholders)
+- **Row 1**: exactly 1 data template row with `{{placeholder}}` markers
+- The template row is automatically cloned N times then removed
+
+Common placeholders: `{{project_name}}`, `{{progress_percent}}`, `{{task_bullets}}`
+
+Multi-line values use `\n` — auto-converted to Word `<w:br/>` line breaks.
+
+---
+
+## Template Form Resource
+`template://{name}/form` returns a markdown document listing every `{{...}}` in the template, organized by location. The format is designed for `generate_from_form` to parse.
+
+Usage:
+```python
+read_mcp_resource("template://ke_hoach_cong_tac_template/form")
+```
+
+---
 
 ## When NOT to use
 - User wants a fully custom document from scratch — use the REST API endpoints instead
