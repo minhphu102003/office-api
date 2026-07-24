@@ -33,5 +33,35 @@ Before creating documents, use `read_mcp_resource` with the URI to read the form
 
 Apply these standards when creating templates or filling placeholders.
 
+## Table Row Cloning (fill_table_rows)
+Use `fill_table_rows` when a table has dynamic rows (e.g. a weekly task list with 1+ projects).
+
+Template design:
+- **Row 0**: header row (static text, no placeholders)
+- **Row 1**: data template row with `{{placeholder}}` markers
+- Only **1 data row** in the template — it will be cloned N times
+
+Common placeholders for data rows:
+- `{{project_name}}` — project/task name
+- `{{progress_percent}}` — completion percentage
+- `{{task_bullets}}` — multi-line bullet list (each line starts with `- `)
+
+Workflow:
+1. `create_doc` (or `generate_from_draft`) to produce the initial .docx with 1 template row
+2. Call `fill_table_rows(filepath="output.docx", rows=[...])` to clone and fill
+3. `download_doc` to retrieve the final file
+
+Example:
+```
+fill_table_rows(
+    filepath="ke_hoach_cong_tac_output.docx",
+    table_index=0,
+    rows=[
+        {"project_name": "Chatbot Tuyển Sinh", "progress_percent": "90", "task_bullets": "- Viết document\n- Kiểm thử dashboard"},
+        {"project_name": "Website Tuyển Sinh", "progress_percent": "50", "task_bullets": "- Phân tích yêu cầu\n- Thiết kế UI"},
+    ]
+)
+```
+
 ## When NOT to use
 - User wants a fully custom document from scratch — use the REST API endpoints instead

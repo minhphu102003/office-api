@@ -10,6 +10,7 @@ from office_mcp.tools.documents import create_doc, view_template
 from office_mcp.tools.drafts import create_draft, update_draft, get_draft, list_drafts, delete_draft, generate_from_draft
 from office_mcp.tools.info import get_doc_info, download_doc
 from office_mcp.tools.markdown import markdown_to_template
+from office_mcp.tools.tables import fill_table_rows
 
 INSTRUCTIONS_PATH = Path(__file__).parent / "INSTRUCTIONS.md"
 INSTRUCTIONS = INSTRUCTIONS_PATH.read_text()
@@ -31,6 +32,7 @@ mcp.add_tool(list_drafts)
 mcp.add_tool(delete_draft)
 mcp.add_tool(generate_from_draft)
 mcp.add_tool(markdown_to_template)
+mcp.add_tool(fill_table_rows)
 
 # ── Main server skill ──
 SKILL_PATH = Path(__file__).parent / "SKILL.md"
