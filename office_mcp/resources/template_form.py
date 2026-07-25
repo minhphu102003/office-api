@@ -1,4 +1,5 @@
 import re
+import sys
 from pathlib import Path
 
 from docx import Document
@@ -7,13 +8,20 @@ TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
 def _resolve_template(name: str) -> Path | None:
+    print(f"[TEMPLATE-FORM] Looking for template: {name!r}", file=sys.stderr)
+    print(f"[TEMPLATE-FORM] TEMPLATES_DIR: {TEMPLATES_DIR} (exists={TEMPLATES_DIR.exists()})", file=sys.stderr)
+    if TEMPLATES_DIR.exists():
+        print(f"[TEMPLATE-FORM] Files in dir: {list(TEMPLATES_DIR.iterdir())}", file=sys.stderr)
     p = TEMPLATES_DIR / name
     if p.exists():
+        print(f"[TEMPLATE-FORM] Found exact match: {p}", file=sys.stderr)
         return p
     for ext in (".docx", ".xlsx", ".pptx"):
         p = TEMPLATES_DIR / f"{name}{ext}"
         if p.exists():
+            print(f"[TEMPLATE-FORM] Found with ext: {p}", file=sys.stderr)
             return p
+    print(f"[TEMPLATE-FORM] Template not found!", file=sys.stderr)
     return None
 
 

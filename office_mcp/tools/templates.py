@@ -1,4 +1,3 @@
-import base64
 import json
 import shutil
 import uuid
@@ -131,18 +130,39 @@ def delete_template(filename: str) -> dict[str, Any]:
         return {"success": False, "error": f"Failed to delete template: {e}"}
 
 
-def upload_template(filename: str, content: str) -> dict[str, Any]:
-    """Upload a template file (base64-encoded) to the templates directory.
+def upload_template(
+    source_path: str,
+    output_filename: str | None = None,
+) -> dict[str, Any]:
+    """Upload a template by reading directly from disk.
+
+    File must be inside office_mcp/ directory (accessible via volume mount).
+    No base64 encoding needed — server reads the file directly.
 
     Args:
-        filename: Template filename with extension (e.g. 'invoice_template.docx')
-        content: Base64-encoded file content
+        source_path: Relative path within office_mcp/ (e.g. 'templates/contract.docx')
+                     or full host path (e.g. 'E:/office-api/office_mcp/templates/contract.docx')
+        output_filename: Name to save as in templates/ (optional, defaults to source filename)
+
+    Example:
+        upload_template(source_path="templates/contract.docx")
+        upload_template(source_path="templates/contract.docx", output_filename="my_contract.docx")
     """
     TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
-    filepath = TEMPLATES_DIR / filename
+
+    # Try direct path first
+    source = Path(source_path)
+    if not source.exists():
+        # Try within mounted volume (/app/office_mcp/)
+        source = Path("/app/office_mcp") / source_path
+        if not source.exists():
+            return {"success": False, "error": f"Source file not found: {source_path}"}
+
+    filename = output_filename or source.name
+    dest = TEMPLATES_DIR / filename
+
     try:
-        decoded = base64.b64decode(content)
-        filepath.write_bytes(decoded)
-        return {"success": True, "path": str(filepath), "size": len(decoded)}
+        shutil.copy2(str(source), str(dest))
+        return {"success": True, "path": str(dest), "size": dest.stat().st_size, "filename": filename}
     except Exception as e:
         return {"success": False, "error": f"Upload failed: {e}"}

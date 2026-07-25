@@ -98,7 +98,7 @@ User: *"Create an invoice for Acme Corp"* (partial data — use draft)
 | `list_templates` | List all available templates |
 | `view_template` | Show text content and placeholders in a template |
 | `create_doc` | Merge JSON data into a template, produce output file |
-| `upload_template` | Upload a new template (base64) |
+| `upload_template` | Upload a new template from disk (reads directly, no base64) |
 | `create_template` | Create template from existing file: copy + find/replace placeholders (preserves original formatting) |
 | `markdown_to_template` | Convert markdown text to a formatted .docx template (TNR, 1.5 spacing, word-format standards) |
 | `get_doc_info` | Read stats and outline of a generated file |
@@ -117,3 +117,25 @@ User: *"Create an invoice for Acme Corp"* (partial data — use draft)
 - Supported formats: `.docx`, `.xlsx`, `.pptx`
 - The `--json` flag is always used for structured output
 - If the user provides incomplete data, prefer `create_draft` + `update_draft` over `create_doc`
+
+## Upload Template
+
+Upload a file from disk into the templates/ directory. Server reads the file directly — no base64 encoding needed.
+
+```
+upload_template(source_path="templates/contract.docx")
+```
+
+With custom output filename:
+
+```
+upload_template(
+    source_path="templates/contract.docx",
+    output_filename="my_contract.docx"
+)
+```
+
+**Notes:**
+- File must be inside `office_mcp/` directory (accessible via volume mount)
+- If file is outside `office_mcp/`, copy it there first using the `write` tool
+- Server reads the file directly from disk (~1-5ms), no LLM token limit issues

@@ -45,7 +45,16 @@ mcp.add_tool(generate_from_form)
     mime_type="text/markdown",
 )
 def template_form_resource(name: str) -> str:
-    return gen_form(name)
+    print(f"[TEMPLATE-FORM] Resource called with name: {name!r}", file=sys.stderr)
+    try:
+        result = gen_form(name)
+        print(f"[TEMPLATE-FORM] Result length: {len(result)}", file=sys.stderr)
+        return result
+    except Exception as e:
+        print(f"[TEMPLATE-FORM] ERROR: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        raise
 
 
 # ── Main server skill ──
